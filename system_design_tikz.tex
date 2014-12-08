@@ -1,0 +1,8 @@
+\begin{tikzpicture}[node distance=1cm, auto,]
+ %nodes
+ 	\node[punkt] (backend) {Backend}
+ 	\node[punkt, below=of backend] (dashboard) {Dashboard}
+ 	\node[punkt, below=of dashboard] (client) {Client}
+ 	
+ 	\path edge node[backend] {Data} node[client]
+\end{tikzpicture}
