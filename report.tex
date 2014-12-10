@@ -96,57 +96,51 @@ Performance tests were used to show that plotting of both both local data sets  
 The modern deluge of data has lead to the need for tools and techniques to analyze very large sets of data.
 This has spurned the development of novel data processing paradigms\cite{dean2008mapreduce}\cite{zaharia2010spark}, analysis algorithms, and reporting tools.
 However, specialized tools for exploratory data analysis are few and far between, leading to the use of less than ideal tools.
-In particular visual exploration of large data sets is a difficult endeavor with existing tools leading to researchers to iterate through many cycles of sampling/selecting data, running a static visaulization, looking at the chart and figureing out what the next step is.
+In particular visual exploration of large data sets is a difficult endeavor with existing tools leading to researchers to iterate through many cycles of sampling/selecting data, running a static visualization, looking at the chart and figuring out what the next step is.
 This slows the data analysis process down and provides ample opportunity for improvement.
 The aim of this paper is to improve this situation by integrating interactive plotting directly into iPython notebook\cite{perez2013open}, a web based python environment targeted toward data analysis.
 
 The remainder of this paper is organized into 5 sections.
-Section 2 reviews the exploratory data analysis problem and the issues data analysts.
-Section 3 introduces the iDcDashboard system, our tool for exploratory data analysis.
+Section 2 elaborates on the exploratory analysis problem and the goals of this project.
+Section 3 introduces the iDcDashboard system, our solution for exploratory analysis.
 Section 4 addresses scaling of iDcDashboard to larger data sets.
 Section 5 evaluates the performance on various sized data sets.
 Section 6 concludes and discusses future directions.
 
-\section{Exploratory Data Analysis}
+\section{Exploratory Analysis}
 
-Prior to modeling a data set, an analyst must understand the data set through a process known as exploratory data analysis.
-While this is partially done through statistical means, the nature of the human brain makes visual displays of the data much more informative.
-Thus exploratory visualizations are a key tool in the analyst's toolbox.   
-Both the nature of the exploratory visualizations and the workflow in which they are created influence the requirements of a solution.
+Prior to modeling any dataset, the analyst must look at the data to find/fix idiosyncrasies and to come up with an idea of what approach to use.
+While statistical summaries server a purpose here, the human eye is must better at processing visual patterns.
+Thus exploratory visualizations are a critical step in the analysis pipeline.
+However, performing exploratory analysis on modern datasets, often terabyte and beyond scale, presents a number of unique challenges which have yet to be addressed in a single publicly available system.
 
-The key feature of an exploratory visualization is the fact that the primary target audience of an exploratory visualization is the creator of the plot.
-This makes extensive customization of the plot less important than allowing typical plots to be created with minimal coding and quickly rendering.
-This makes the simplicity of the systems interface and speed more important than a wide array of options.
-By focusing on a number of key plots with sensible defaults these aspects can be optimized.
+A critical issue in visualizing big data is that analysis is done on laptops and workstations which have limited screen real estate.
+Thus our primary goal must to to effectively utilize screen space.
+While this could be done by allowing the creation of artful displays as seen in Tufte's work\cite{Tufte:1986:VDQ:33404} or the d3.js gallery\cite{d3galery}, these designs require extensive design time which analysts don't typically have.
+An alternative method is to instead allow the analyst to easily modify the visualization so it displays the part of the data they are interested in.
+This efficiently utilizes the screen since it only shows the data relevant to the user.
+However, for this to work it must be easy to select the data of interest and responsive.
 
-Exploratory data visualization is a highly iterative process with plot informing data processing and the creation of new plots.
-In particular, a plot helps can help choose feature engineering and data cleansing procedures to apply.
-After processing a new plot will be created to verify the correct application.
-Thus the data processing and visualization should be tightly integrated within a single environment.
+To support responsiveness, data must be on the client; however, no workstation will ever be able to hold the largest datasets of interest.
+Thus the system must choose which data to send to the client and which data to keep on the server.
+In particular, the analyst should be presented with a high level summary or sample of the data and then be able to zoom in on areas of interest.
+As they zoom in more data relevant to the region of interest should be populated to allow deeper understanding of the specific area.
 
-Additionally, a common task is to ``drill down'' on interesting aspects of of a plot by creating a new plot using a subset of data seen to be interesting in previous plots.
-For example, an unexpected non linearity or high frequency of an specific value may lead to the analyst replotting just data within that unexpected area.
-With existing tools, plots are typically static and require manual filtering and re plotting when the analyst wishes to drill down.  
+As an analyst performs exploratory analysis, they often discover dirty data which needs to be cleaned or relationships between predictors and target which don't fit into their model (an example includes non linear relationships).
+After these discoveries, the analyst must be able to apply any transform they need and then quickly feed back into the visualization system.
+Thus, the system must be tightly integrated with an existing data processing system.
+Additionally, the system should be easy to configure and use so the analyst doesn't need to context switch between languages when they want to create or modify a plot.
+Thus a simple API is critical.
 
-Due to the nature of exploratory visualization, a number of goals have emerged:
-\begin{itemize}
-	\item Simple to use API for creating of plots with good default settings
-	\item Fast rendering of a plot
-	\item Integration with an existing data analysis/processing environment
-	\item Easy selection of data and replotting of selected data
-\end{itemize}
-Additionally, the visualization tool should have a strategy for analyzing big data sets and connecting to a variety of data providers.
-
-Probably the most daunting of these goals is drilling down goal since few current packages provide such a feature.
-We have decided to solve this by using interactive plots which allow the analyst to filter data through interaction with the mouse.
-This is inspired the by dc.js/crossfilter.js demos\cite{dcjs} which shows a collection of plots each allowing the user to select data and instantly see the selected subset displayed on other plots.
-With this we choose to use the dc.js package for our plotting leading to the requirement that we use a web based environment.
-The best web based environment for data analysis is the iPython notebook due to its tight integration of HTML and Python, a powerful language for data processing.
-With these decisions, we introduce the iDcDashboard.
+Individually, much of these issues have been solved; however, no single system brings them all together.
+The closest to what we want is dc.js with cross filter which provides responsive interactive visualizations suitable for exploratory analysis.
+However, dc.js requires extensive knowledge of JavaScript to utilize effectively and is only a client side tool with no ability to scale to large data.
+iPython notebook also provides many of the features we want (integration of data manipulation and plots, integration with many tools); however, it's interactive potting features are nascent and again suffer when trying to scale.
+Thus we bring these two tools together to form the iDcDashboard system.
 
 \section{iDcDashboard}% 2 pages
 
-To solve the exploratory visualization problem we developed an iPythnon notebook widget we call iDcDashboard.
+To solve the exploratory visualization problem we developed an iPython notebook widget we call iDcDashboard.
 The iDcDashboard widget is a collection of interactive plots over a shared tabular dataset.
 The user is able to easily create the dashboard by using a simple configuration API.
 Each plot supports interactive application of filters which instantly subset the data on other plots and is communicated to the Python backend.
@@ -159,12 +153,12 @@ Structured markdown text, python code, html, and visualizations can all reside w
 Due to these advantages, iPython notebook has become one of the main environments for analytic work.
 
 A powerful feature of iPython notebooks is the widget facility.
-A widget is an interactive HTML/Javscript element displayed within a iPython notebook which communicates with a python object on the server side.
+A widget is an interactive HTML/JavaScript element displayed within a iPython notebook which communicates with a python object on the server side.
 Since widgets were introduced recently, their full potential has yet to be realized; however, existing examples showing interactive editing of python objects demonstrate some of their potential power.
 
 The iDcDashboard fits well into the widget model since it has a distinct client (the interactive visualizations) and backend (the data provider).
 Communication between the two sides in a widget is provided by the creation of shared variables which can be read and written from either side without any protection or synchronization.
-For the iDcDashboard, we decided to adopt the convention that each shared variable will either be written by the Python or Javascript and read by the other side.
+For the iDcDashboard, we decided to adopt the convention that each shared variable will either be written by the Python or JavaScript and read by the other side.
 Callback functions were registered on the reading side so the reader would be notified whenever a change was made to each variable and the appropriate action could be taken.
 With this convention the communication can be thought of as a pipe and thus we will refer to these shared variables as pipes throughout the rest of this paper.
 Experimental versions of the iPython framework are directly implementing this behavior so future work can phase out this convention and just use a direct pipe interface.
@@ -181,14 +175,14 @@ To ease implementation and extensibility we segmented the iDcDashboard system in
 These three layers communicate as seen in figure \ref{fig:system_flow}.
 
 The dashboard is the central layer and serves two main purposes.
-First it exposes a simple python interface to configure the javascript based client layer.
+First it exposes a simple python interface to configure the javaScript based client layer.
 Second it provides an interface for two way communication between the client and the backend.
 This layer is the main layer a user will interact with.
 
 The client layer renders the plots at the users request and orchestrates what data the plots display.
 A plot interface allows easy addition of new plot types to the system without knowledge of the backend coding or the iPython widget complexities.
 
-The backend is a facade class to provide a consistent interface between the dashboad and a dataset object.
+The backend is a facade class to provide a consistent interface between the dashboard and a dataset object.
 The isolation from the direct widget allows easy addition of a backend supporting additional data sources or data processing procedures.
 
 We now go into detail on each of these three layers individually.
@@ -208,7 +202,7 @@ Once constructed, the main function of the dashboard is to provide two pipes bet
 The data pipe is used by the backend to override the data in the client with a new set of data.  
 The pipe uses a JSON blob containing a single JList of JObjects.
 Since the system is only designed to handle tabular datasets, the JObjects are expected to be flat, that is only contain strings or numerics for values.
-To ease backend programming the dashboard also accpets Pandas DataFrame or Python lists of dictionaries which it will automatically convert to the correct JSON blob format.
+To ease backend programming the dashboard also accepts Pandas DataFrame or Python lists of dictionaries which it will automatically convert to the correct JSON blob format.
 
 The filter pipe is used by the client to inform the backend of any filters applied on the client side.
 Two kinds of filters are supported: set inclusion and numeric range filters.
@@ -271,8 +265,8 @@ A group defines a map-reduce function which collects points in a dimension toget
 A typical use of a group is to create a binned histogram of a dimension by mapping the dimension to a bin and then reducing by counting the number of records in each bin.
 
 The data manager accepts a JSON configuration for creating dimensions/groups and assigning each dimension and group a name.  
-This is done by passing a JObject where keys are dimension names and values are annother JObject describing the given dimension.
-A dimension's JObject contains the javascript code for mapping a record to the points and an object describing all the groups in a similar manner as the dimensions.
+This is done by passing a JObject where keys are dimension names and values are another JObject describing the given dimension.
+A dimension's JObject contains the javaScript code for mapping a record to the points and an object describing all the groups in a similar manner as the dimensions.
 The data manager then allows referring to a dimension and group by the name ``cf/(dim name)/(group name)'' and by default creates a null group which uses an identity mapping for points and returns the count for each distinct value.
 
 \subsubsection{Backend}\label{sec:backend}
@@ -282,7 +276,7 @@ Typically the backend is simply a facade over a standard data set providing obje
 However, it is possible to create a backend that produces data or performs more complicated data processing tasks.
 
 There are two ways for the user to interact with the backend.
-First the backend exposes a toolbar which is a collection of standard iPythonNotebook widgets (typically buttons and other standard form items) which have call back functions into the backend.
+First the backend exposes a toolbar which is a collection of standard iPython notebook widgets (typically buttons and other standard form items) which have call back functions into the backend.
 This allows the backend to have specialized user interaction such as allowing the user to request a new dataset be pushed.
 Secondly, every time a filter is modified on a plot the client notifies the backend as described in section \ref{sec:dashboard}.
 Each time either of these events happen the backend can decide to push a new dataset to the dashboard/client as described in \ref{sec:dashboard}.
@@ -306,7 +300,7 @@ We suspect the iDcDashboard system to stand up to all of these potential uses.
 To use iDcDashboard, the user creates a new instance of the Dashboard object by passing three parameters: the backend, list of dimensions, and layout configuration.
 
 As described in section \ref{sec:backend}, the backend is a python object which connects to a data source the user wishes to analyze.
-The data is provided in a single json list containing flat json objects of key/value pairs.
+The data is provided in a single Json list containing flat json objects of key/value pairs.
 
 Dimensions are configured via the Dimension and Group classes which provide automatic generation of the data manager configuration discussed in section \ref{sec:client}.
 An example of the dimension configuration is seen in \ref{fig:simple_example}.
@@ -369,7 +363,7 @@ This allows the following work flow:
 	\item User is displayed a random sample of the whole data set
 	\item User highlights data they are particularly interested in
 	\item User clicks resample
-	\item User now has a zoomed in view of just the data they are interseted in and can futher explore just that region.
+	\item User now has a zoomed in view of just the data they are interested in and can further explore just that region.
 \end{itemize}
 
 In addition, we expose additional UI buttons which allow marking of all data matching the currently applied filter.
@@ -408,7 +402,7 @@ A screenshot of this dashboard can be seen in the appendix.
 To evaluate performance we measure the time between clicking the resample button until the data has completed pushing to the client and the time from the client receiving the data until the plots have finished rerendering.
 We perform this test with exponentially increasing sample sizes of 100, 1000, 10000, 100000 data points 5 times per sample size.
 At the sample size of 100 and 1000 the tools were all very responsive; however, at 10,000 it took a few seconds for the scatter plot to respond however the other plots took under a second and still felt reasonable.  
-At 100,000 data points the gui was extremely difficult to use and could be considered unuseable.
+At 100,000 data points the GUI was extremely difficult to use and could be considered unusable.
 
 \begin{figure}
 \begin{center}
@@ -418,10 +412,10 @@ At 100,000 data points the gui was extremely difficult to use and could be consi
 \end{figure}
 
 The results of this experiment are presented in figure \ref{fig:weather_perf}.
-We see that processing time is nearly constant and only increases signifantly at a sample size of 100,000.
+We see that processing time is nearly constant and only increases significantly at a sample size of 100,000.
 Additionally we see that the rendering time is approximately linear but typically faster than processing time until we hit 100,000 records.
 An interesting discovery is that initial rendering time, the time it takes to render the plots using the initial sample, is consistently about half the time of the resampling rendering time.
-It is likely that the data loading routine is called before the data has finished transfering to the client increasing the render time while the data is already there before the initial render.
+It is likely that the data loading routine is called before the data has finished transferring to the client increasing the render time while the data is already there before the initial render.
 These rendering times seem reasonably fast and within the range of time an analyst would be willing to wait for such a process, especially given the alternative of manually filtering/processing and then plotting would take more time and require more effort.
 
 \subsection{Remote Backend}
@@ -453,25 +447,20 @@ The results of this experiment are presented in figure \ref{fig:weather_big_perf
 Sampling time and spark execution time are constant, which matches results on the local machine;
 however, interestingly spark execution time accounts for only one half of the total sampling time.  
 This is probably caused by network latency between the spark cluster to the web server and the websever to the iPython notebook.
-Rendering times are inline with the local rendering time which is expected since the same dashboard was used and the backend has no impact on the rendering other than the data format (which is nearly the same).
+Rendering times are similar to local rendering time which is expected since the same dashboard was used and the backend has no impact on the rendering other than the data format (which is nearly the same).
 Usability of the rendered dashboard was also the same as for the local case as expected.
 We believe a 30 second round trip time to be reasonable performance given multiple layers of the system; however, it is likely many users will complain with this speed and thus demand a better solution.
 Possible ideas are discussed in section \ref{sec:conclusion}.
-
-\subsubsection{Twitter Data}
-
-As a final experiment, we analyze a second data set consisting of data pulled using the twitter API.
-This is still being worked out.
 
 \section{Conclusion and Future Work}\label{sec:conclusion}%0.5 pages
 
 In this paper we introduced the iDcDashboard, a novel system for exploratory visual analysis.
 
 
-While the system's useability can be extended through additions of new plots and features, we believe the most significant work to be in improvements to the backend system.
+While the system's usability can be extended through additions of new plots and features, we believe the most significant work to be in improvements to the backend system.
 Work to improve the remote backend's speed is particularly important.
 A possible design would be to utilize a data hierarchy of client, ipython, webserver, spark with caching at each level to improve performance.
-Due to the layered design it is expected this work will be easy to integrate into the system and is expected to take a couple of monhts.
+Due to the layered design it is expected this work will be easy to integrate into the system and is expected to take a couple of months.
 Future work will also concern the use of this system to visualize data streams in an efficient manner and to identify areas this can be used for human guided machine learning.
 
 This system was constructed over the Fall quarter of 2014 as David Lisuk's masters research project.
